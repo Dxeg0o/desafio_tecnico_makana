@@ -5,6 +5,7 @@
 import React, { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { parseFile } from "../services/fileParser";
+import { buildStructureDetectionPrompt } from "../services/aiHelpers";
 
 export interface FileUploaderProps {
   /**
@@ -19,6 +20,28 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
     Record<string, Record<string, unknown>[]>
   >();
   const [selectedSheets, setSelectedSheets] = useState<string[]>([]);
+  const [structure, setStructure] = useState<Record<string, unknown> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const detectStructure = async (rows: Record<string, unknown>[]) => {
+    setError(null);
+    setStructure(null);
+    try {
+      const fragment = rows
+        .slice(0, 10)
+        .map((r) => Object.values(r).slice(0, 10));
+      const prompt = buildStructureDetectionPrompt(fragment);
+      const res = await fetch("/api/openai", {
+        method: "POST",
+        body: JSON.stringify({ prompt }),
+      });
+      const text = await res.text();
+      setStructure(JSON.parse(text));
+    } catch (e: unknown) {
+      if (e instanceof Error) setError(e.message);
+      else setError('Unknown error');
+    }
+  };
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
@@ -30,14 +53,15 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
         console.log("FileUploader: parsed sheets:", sheets);
         const sheetNames = Object.keys(sheets);
         if (sheetNames.length <= 1) {
+          await detectStructure(sheets[sheetNames[0]] || []);
           onDataLoaded?.(sheets);
         } else {
           setPreviewSheets(sheets);
           setSelectedSheets(sheetNames);
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("FileUploader: error parsing file:", error);
-        alert("Ocurrió un error al procesar el archivo.");
+        setError("Ocurrió un error al procesar el archivo.");
       }
     },
     [onDataLoaded]
@@ -70,13 +94,15 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
     );
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!previewSheets) return;
     const out: Record<string, Record<string, unknown>[]> = {};
     selectedSheets.forEach((name) => {
       const data = previewSheets[name];
       if (data) out[name] = data;
     });
+    const firstSheet = out[selectedSheets[0]] || [];
+    await detectStructure(firstSheet);
     onDataLoaded?.(out);
     setPreviewSheets(undefined);
     setSelectedSheets([]);
@@ -96,6 +122,13 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
           <p>Arrastra un archivo CSV/XLSX/XLSM o haz click para seleccionar</p>
         )}
       </div>
+
+      {error && <p className="text-red-500">{error}</p>}
+      {structure && (
+        <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto">
+          {JSON.stringify(structure, null, 2)}
+        </pre>
+      )}
 
       {previewSheets && Object.keys(previewSheets).length > 1 && (
         <div className="space-y-2">
