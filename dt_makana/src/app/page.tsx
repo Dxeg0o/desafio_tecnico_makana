@@ -7,6 +7,9 @@ import { HeaderConfigurator } from "@/components/header-configurator";
 import { ResultsViewer } from "@/components/results-viewer";
 import { convertSheetData, type HeaderConfig } from "@/utils/convertSheetData";
 import { FileUploader } from "@/components/file-uploader";
+import { classifySheet } from "@/services/classifySheet";
+import { LoadingOverlay } from "@/components/loading-overlay";
+import { type PersonnelEvent } from "@/types";
 
 interface SheetConfig extends HeaderConfig {
   types: ("license" | "accident" | "failure")[];
@@ -39,7 +42,8 @@ export default function Home() {
     {}
   );
   const [processedData, setProcessedData] =
-    useState<Record<string, Record<string, unknown>[]>>();
+    useState<Record<string, PersonnelEvent[]>>();
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleFileLoaded = (data: Record<string, string[][]>) => {
     setSheets(data);
@@ -71,19 +75,43 @@ export default function Home() {
     );
   };
 
-  const processData = () => {
+  const processData = async () => {
     if (!sheets) return;
 
-    const results: Record<string, Record<string, unknown>[]> = {};
-    selectedSheets.forEach((name) => {
+    setIsProcessing(true);
+
+    const results: Record<string, PersonnelEvent[]> = {};
+    for (const name of selectedSheets) {
       const rows = sheets[name];
       const config = sheetConfigs[name];
-      if (rows && config) {
-        results[name] = convertSheetData(rows, config);
+      if (!rows || !config) continue;
+
+      const structured = convertSheetData(rows, config);
+
+      const headers =
+        config.orientation === "row"
+          ? (rows[config.index] || []).map((h) => String(h))
+          : rows.map((r) => String(r[config.index] || ""));
+      const sampleRows =
+        config.orientation === "row"
+          ? rows.slice(config.index + 1, config.index + 11)
+          : rows.slice(0, 10).map((r) => r.slice(config.index + 1));
+
+      try {
+        const classified = await classifySheet({
+          headers,
+          sampleRows,
+          rows: structured,
+        });
+        results[name] = classified;
+      } catch (err) {
+        console.error("classification error", err);
+        results[name] = structured as unknown as PersonnelEvent[];
       }
-    });
+    }
 
     setProcessedData(results);
+    setIsProcessing(false);
     setCurrentStep(4);
   };
 
@@ -114,7 +142,8 @@ export default function Home() {
           onStepChange={(step) => step < currentStep && setCurrentStep(step)}
         />
 
-        <div className="bg-white rounded-xl shadow-lg p-8">
+        <div className="bg-white rounded-xl shadow-lg p-8 relative">
+          {isProcessing && <LoadingOverlay message="Clasificando datos..." />}
           {currentStep === 1 && (
             <FileUploader onFileLoaded={handleFileLoaded} />
           )}
