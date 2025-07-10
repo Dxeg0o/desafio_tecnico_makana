@@ -81,34 +81,38 @@ export default function Home() {
     setIsProcessing(true);
 
     const results: Record<string, PersonnelEvent[]> = {};
-    for (const name of selectedSheets) {
-      const rows = sheets[name];
-      const config = sheetConfigs[name];
-      if (!rows || !config) continue;
 
-      const structured = convertSheetData(rows, config);
+    await Promise.all(
+      selectedSheets.map(async (name) => {
+        const rows = sheets[name];
+        const config = sheetConfigs[name];
+        if (!rows || !config) return;
 
-      const headers =
-        config.orientation === "row"
-          ? (rows[config.index] || []).map((h) => String(h))
-          : rows.map((r) => String(r[config.index] || ""));
-      const sampleRows =
-        config.orientation === "row"
-          ? rows.slice(config.index + 1, config.index + 11)
-          : rows.slice(0, 10).map((r) => r.slice(config.index + 1));
+        const structured = convertSheetData(rows, config);
 
-      try {
-        const classified = await classifySheet({
-          headers,
-          sampleRows,
-          rows: structured,
-        });
-        results[name] = classified;
-      } catch (err) {
-        console.error("classification error", err);
-        results[name] = structured as unknown as PersonnelEvent[];
-      }
-    }
+        const headers =
+          config.orientation === "row"
+            ? (rows[config.index] || []).map((h) => String(h))
+            : rows.map((r) => String(r[config.index] || ""));
+        const sampleRows =
+          config.orientation === "row"
+            ? rows.slice(config.index + 1, config.index + 11)
+            : rows.slice(0, 10).map((r) => r.slice(config.index + 1));
+
+        try {
+          const classified = await classifySheet({
+            headers,
+            sampleRows,
+            types: config.types,
+            rows: structured,
+          });
+          results[name] = classified;
+        } catch (err) {
+          console.error("classification error", err);
+          results[name] = structured as unknown as PersonnelEvent[];
+        }
+      }),
+    );
 
     setProcessedData(results);
     setIsProcessing(false);
