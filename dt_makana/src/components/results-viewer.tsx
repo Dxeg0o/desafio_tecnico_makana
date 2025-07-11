@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Download, FileJson, FileSpreadsheet, CheckCircle2, Database } from "lucide-react"
 import * as XLSX from "xlsx"
+import { type PersonnelEvent } from "@/types"
 
 interface ResultsViewerProps {
-  structured: Record<string, Record<string, unknown>[]>
+  structured: Record<string, PersonnelEvent[]>
   onBack: () => void
 }
 
