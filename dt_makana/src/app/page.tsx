@@ -11,6 +11,7 @@ import { chunkArray } from "@/utils/chunkArray";
 import { FileUploader } from "@/components/file-uploader";
 import { classifySheet } from "@/services/classifySheet";
 import { describeColumns } from "@/services/describeColumns";
+import { mapFields } from "@/services/mapFields";
 import { type PersonnelEvent } from "@/types";
 
 interface SheetConfig extends HeaderConfig {
@@ -112,6 +113,7 @@ export default function Home() {
           : rows.slice(0, 10).map((r) => r.slice(config.index + 1));
 
       const descriptions = await describeColumns({ headers, sampleRows });
+      const mapping = await mapFields({ headers, descriptions, types: config.types });
 
       const chunks = chunkArray(structured, 20);
       const events: PersonnelEvent[] = [];
@@ -121,6 +123,7 @@ export default function Home() {
             rows: chunk,
             types: config.types,
             descriptions,
+            mapping,
           });
           events.push(...classified);
         } catch (err) {
