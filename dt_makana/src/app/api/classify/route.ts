@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { PersonnelEvent } from "@/types";
+import { eventTypeExamples } from "@/utils/eventTypeExamples";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -29,9 +30,14 @@ export async function POST(req: NextRequest) {
       Array.isArray(types) && types.length > 0
         ? types.join(", ")
         : "license, accident, failure";
+
+    const exampleLines = Object.entries(eventTypeExamples)
+      .map(([t, ex]) => `${t}: ${ex.join(", ")}`)
+      .join("\\n");
+
     const classifyPrompt = `Using the following TypeScript definitions to understand the desired output:\n${typesDefinition}\nColumn descriptions: ${JSON.stringify(
       descriptions
-    )}\nOnly consider event types: ${allowed}. If a row does not match one of these types, skip it. Classify each of the following rows and return an array of PersonnelEvent objects:\n${JSON.stringify(
+    )}\nExamples of event type values:\n${exampleLines}\nOnly consider event types: ${allowed}. If a row does not match one of these types, skip it. Classify each of the following rows and return an array of PersonnelEvent objects:\n${JSON.stringify(
       rows
     )}.`;
 
