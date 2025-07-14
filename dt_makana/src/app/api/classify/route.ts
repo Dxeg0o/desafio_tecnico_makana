@@ -35,14 +35,14 @@ export async function POST(req: NextRequest) {
       .map(([t, ex]) => `${t}: ${ex.join(", ")}`)
       .join("\\n");
 
-    const classifyPrompt = `Using the following TypeScript definitions to understand the desired output:\n${typesDefinition}\nColumn descriptions: ${JSON.stringify(
+    const classifyPrompt = `You are a data classification assistant.\n\nRules to follow:\n1. Format the output using the TypeScript definitions below.\n${typesDefinition}\n2. Use the column descriptions and event type examples to interpret the data.\nColumn descriptions: ${JSON.stringify(
       descriptions
-    )}\nExamples of event type values:\n${exampleLines}\nOnly consider event types: ${allowed}. If a row does not match one of these types, skip it. Classify each of the following rows and return an array of PersonnelEvent objects:\n${JSON.stringify(
+    )}\nEvent type examples:\n${exampleLines}\n3. Only allow event types: ${allowed}. Ignore rows that do not clearly match one of these types.\n4. Respond **only** with a JSON array of PersonnelEvent objects without any extra text.\n\nClassify the following rows:\n${JSON.stringify(
       rows
-    )}.`;
+    )}`;
 
     const classCompletion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4.1",
       messages: [
         {
           role: "system",
@@ -53,6 +53,12 @@ export async function POST(req: NextRequest) {
       temperature: 0.2,
       response_format: { type: "json_object" },
     });
+
+    // Log raw response from OpenAI to aid in debugging
+    console.log(
+      "OpenAI classify raw response:",
+      classCompletion.choices[0].message.content
+    );
 
     const eventsText = classCompletion.choices[0].message.content || "[]";
     let events: PersonnelEvent[] = [];
@@ -121,6 +127,9 @@ export async function POST(req: NextRequest) {
         : ["license", "accident", "failure"]
     );
     const filtered = events.filter((e) => allowedSet.has(e.event_type));
+
+    // Log the parsed and filtered events for visibility
+    console.log("Classified events:", JSON.stringify(filtered, null, 2));
 
     return NextResponse.json(filtered);
   } catch (error) {
