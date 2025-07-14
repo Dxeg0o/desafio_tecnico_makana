@@ -5,12 +5,12 @@ import { StepIndicator } from "@/components/step-indicator";
 import { SheetSelector } from "@/components/sheet-selector";
 import { HeaderConfigurator } from "@/components/header-configurator";
 import { ResultsViewer } from "@/components/results-viewer";
+import { ProcessingViewer } from "@/components/processing-viewer";
 import { convertSheetData, type HeaderConfig } from "@/utils/convertSheetData";
 import { chunkArray } from "@/utils/chunkArray";
 import { FileUploader } from "@/components/file-uploader";
 import { classifySheet } from "@/services/classifySheet";
 import { describeColumns } from "@/services/describeColumns";
-import { LoadingOverlay } from "@/components/loading-overlay";
 import { type PersonnelEvent } from "@/types";
 
 interface SheetConfig extends HeaderConfig {
@@ -46,6 +46,7 @@ export default function Home() {
   const [processedData, setProcessedData] =
     useState<Record<string, PersonnelEvent[]>>();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   const handleFileLoaded = (data: Record<string, string[][]>) => {
     setSheets(data);
@@ -80,49 +81,61 @@ export default function Home() {
   const processData = async () => {
     if (!sheets) return;
 
+    setProcessedData(undefined);
+    setCurrentStep(4);
     setIsProcessing(true);
 
+    const totalChunks = selectedSheets.reduce((sum, name) => {
+      const rows = sheets[name];
+      const config = sheetConfigs[name];
+      const structured = convertSheetData(rows, config);
+      return sum + chunkArray(structured, 20).length;
+    }, 0);
+
+    let completed = 0;
     const results: Record<string, PersonnelEvent[]> = {};
-    await Promise.all(
-      selectedSheets.map(async (name) => {
-        const rows = sheets[name];
-        const config = sheetConfigs[name];
-        if (!rows || !config) return;
 
-        const structured = convertSheetData(rows, config);
+    for (const name of selectedSheets) {
+      const rows = sheets[name];
+      const config = sheetConfigs[name];
+      if (!rows || !config) continue;
 
-        const headers =
-          config.orientation === "row"
-            ? (rows[config.index] || []).map((h) => String(h))
-            : rows.map((r) => String(r[config.index] || ""));
-        const sampleRows =
-          config.orientation === "row"
-            ? rows.slice(config.index + 1, config.index + 11)
-            : rows.slice(0, 10).map((r) => r.slice(config.index + 1));
+      const structured = convertSheetData(rows, config);
 
-        const descriptions = await describeColumns({ headers, sampleRows });
+      const headers =
+        config.orientation === "row"
+          ? (rows[config.index] || []).map((h) => String(h))
+          : rows.map((r) => String(r[config.index] || ""));
+      const sampleRows =
+        config.orientation === "row"
+          ? rows.slice(config.index + 1, config.index + 11)
+          : rows.slice(0, 10).map((r) => r.slice(config.index + 1));
 
-        const chunks = chunkArray(structured, 20);
-        const events: PersonnelEvent[] = [];
-        for (const chunk of chunks) {
-          try {
-            const classified = await classifySheet({
-              rows: chunk,
-              types: config.types,
-              descriptions,
-            });
-            events.push(...classified);
-          } catch (err) {
-            console.error("classification error", err);
-          }
+      const descriptions = await describeColumns({ headers, sampleRows });
+
+      const chunks = chunkArray(structured, 20);
+      const events: PersonnelEvent[] = [];
+      for (const chunk of chunks) {
+        try {
+          const classified = await classifySheet({
+            rows: chunk,
+            types: config.types,
+            descriptions,
+          });
+          events.push(...classified);
+        } catch (err) {
+          console.error("classification error", err);
+        } finally {
+          completed++;
+          setProgress(Math.round((completed / totalChunks) * 100));
         }
-        results[name] = events;
-      })
-    );
+      }
+      results[name] = events;
+    }
 
     setProcessedData(results);
     setIsProcessing(false);
-    setCurrentStep(4);
+    setProgress(100);
   };
 
   const resetFlow = () => {
@@ -153,7 +166,6 @@ export default function Home() {
         />
 
         <div className="bg-white rounded-xl shadow-lg p-8 relative">
-          {isProcessing && <LoadingOverlay message="Clasificando datos..." />}
           {currentStep === 1 && (
             <FileUploader onFileLoaded={handleFileLoaded} />
           )}
@@ -181,8 +193,12 @@ export default function Home() {
             />
           )}
 
-          {currentStep === 4 && processedData && (
-            <ResultsViewer structured={processedData} onBack={resetFlow} />
+          {currentStep === 4 && (
+            isProcessing || !processedData ? (
+              <ProcessingViewer progress={progress} />
+            ) : (
+              <ResultsViewer structured={processedData} onBack={resetFlow} />
+            )
           )}
         </div>
       </div>
