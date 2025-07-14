@@ -26,11 +26,10 @@ function parseCSV(file: File): Promise<string[][]> {
   });
 }
 
-async function parseExcel(
-  file: File
-): Promise<Record<string, string[][]>> {
+async function parseExcel(file: File): Promise<Record<string, string[][]>> {
   const arrayBuffer = await file.arrayBuffer();
-  const workbook = XLSX.read(arrayBuffer, { type: "array" });
+  // Use cellDates so Excel date cells are parsed as JavaScript Date objects
+  const workbook = XLSX.read(arrayBuffer, { type: "array", cellDates: true });
   const result: Record<string, string[][]> = {};
   workbook.SheetNames.forEach((sheetName) => {
     const worksheet = workbook.Sheets[sheetName];
@@ -38,6 +37,7 @@ async function parseExcel(
       header: 1,
       defval: "",
       blankrows: false,
+      raw: false,
     }) as unknown as string[][];
     result[sheetName] = rows;
   });

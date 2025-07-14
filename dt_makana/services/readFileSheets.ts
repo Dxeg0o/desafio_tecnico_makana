@@ -12,7 +12,8 @@ export async function readFileSheets(file: File): Promise<Record<string, string[
           return
         }
 
-        const workbook = XLSX.read(data, { type: "array" })
+        // Enable cellDates so Excel date cells are parsed as JavaScript Dates
+        const workbook = XLSX.read(data, { type: "array", cellDates: true })
         const sheets: Record<string, string[][]> = {}
 
         workbook.SheetNames.forEach((sheetName) => {
@@ -20,6 +21,8 @@ export async function readFileSheets(file: File): Promise<Record<string, string[
           const jsonData = XLSX.utils.sheet_to_json(worksheet, {
             header: 1,
             defval: "",
+            // raw:false ensures date values are formatted as strings
+            raw: false,
           }) as string[][]
           sheets[sheetName] = jsonData
         })
