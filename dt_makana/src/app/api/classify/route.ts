@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { PersonnelEvent } from "@/types";
 import { eventTypeExamples } from "@/utils/eventTypeExamples";
+import { typesDefinition } from "@/utils/typesDefinition";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-const typesDefinition = `interface BaseEvent {\n  department: string;\n  event_type: "license" | "accident" | "failure";\n  start_date: string;\n  uniqueness_flag: string;\n  turn_type: string;\n}\ninterface LicenseEvent extends BaseEvent {\n  license_type: string;\n  collaborator_age: number;\n  collaborator_gender: "male" | "female" | "other";\n  collaborator_seniority: string;\n}\ninterface AccidentEvent extends BaseEvent {\n  date: string;\n  hour: string;\n  accident_type: string;\n  activity: string;\n  motive: string;\n  severity: "No aplica" | "Baja" | "Media" | "Alta" | "Fatal";\n  potential: string;\n  collaborator_age: number;\n  collaborator_gender: "male" | "female" | "other";\n  collaborator_seniority: string;\n  description: string;\n}\ninterface FailureEvent extends BaseEvent {\n  date: string;\n  failure_type: string;\n}\ntype PersonnelEvent = LicenseEvent | AccidentEvent | FailureEvent;`;
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,10 +12,12 @@ export async function POST(req: NextRequest) {
       rows,
       types,
       descriptions,
+      mapping,
     }: {
       rows: Record<string, unknown>[];
       types: string[];
       descriptions: Record<string, string>;
+      mapping: Record<string, string>;
     } = await req.json();
 
     if (!process.env.OPENAI_API_KEY) {
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
 
     const classifyPrompt = `You are a data classification assistant.\n\nRules to follow:\n1. Format the output using the TypeScript definitions below.\n${typesDefinition}\n2. Use the column descriptions and event type examples to interpret the data.\nColumn descriptions: ${JSON.stringify(
       descriptions
-    )}\nEvent type examples:\n${exampleLines}\n3. Only allow event types: ${allowed}. Ignore rows that do not clearly match one of these types.\n4. Respond **only** with a JSON array of PersonnelEvent objects without any extra text.\n\nClassify the following rows:\n${JSON.stringify(
+    )}\nField mapping: ${JSON.stringify(mapping)}\nEvent type examples:\n${exampleLines}\n3. Only allow event types: ${allowed}. Ignore rows that do not clearly match one of these types.\n4. Respond **only** with a JSON array of PersonnelEvent objects without any extra text.\n\nClassify the following rows:\n${JSON.stringify(
       rows
     )}`;
 

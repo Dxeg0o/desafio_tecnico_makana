@@ -4,6 +4,7 @@ export interface ClassifyPayload {
   rows: Record<string, unknown>[];
   types: ("license" | "accident" | "failure")[];
   descriptions: Record<string, string>;
+  mapping: Record<string, string>;
 }
 
 export async function classifySheet(
