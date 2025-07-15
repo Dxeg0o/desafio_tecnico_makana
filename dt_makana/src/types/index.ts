@@ -7,8 +7,8 @@ export interface BaseEvent {
 }
 export interface LicenseEvent extends BaseEvent {
   license_type: string;
-  collaborator_age: number;
-  collaborator_gender: "male" | "female" | "other";
+  collaborator_age?: number | null;
+  collaborator_gender?: "male" | "female" | "other" | null;
   collaborator_seniority: string;
 }
 export interface AccidentEvent extends BaseEvent {
@@ -19,8 +19,8 @@ export interface AccidentEvent extends BaseEvent {
   motive: string;
   severity: "No aplica" | "Baja" | "Media" | "Alta" | "Fatal";
   potential: string;
-  collaborator_age: number;
-  collaborator_gender: "male" | "female" | "other";
+  collaborator_age?: number | null;
+  collaborator_gender?: "male" | "female" | "other" | null;
   collaborator_seniority: string;
   description: string;
 }

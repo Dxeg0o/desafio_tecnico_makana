@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { typesDefinition } from "@/utils/typesDefinition";
+import { eventTypeExamples } from "@/utils/eventTypeExamples";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -14,13 +15,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const mappingPrompt = `You are a data analyst.\n\nUse the TypeScript definitions below to understand the available fields:\n${typesDefinition}\n\nHeaders: ${headers.join(
-    ", "
-  )}\nDescriptions: ${JSON.stringify(
-    descriptions
-  )}\nAllowed event types: ${types.join(
-    ", "
-  )}\n\nProvide concise instructions on how to populate each PersonnelEvent field using the dataset columns. Mention when any headers correspond to days of the month. Respond only with a JSON object whose keys are the field names from the TypeScript definitions.`;
+  const mappingPrompt = `You are a data analyst.
+
+Use the TypeScript definitions below to understand the available fields:
+${typesDefinition}
+
+Headers: ${headers.join(", ")}
+Descriptions: ${JSON.stringify(descriptions)}
+Allowed event types: ${types.join(", ")}
+Event type examples: ${Object.entries(eventTypeExamples)
+    .map(([t, ex]) => `${t}: ${ex.join(", ")}`)
+    .join("\\n")}
+
+Provide concise instructions on how to populate each PersonnelEvent field using the dataset columns.
+When age or gender are missing, infer them only from clear clues like a birthdate or a distinctly gendered name.
+Respond only with a JSON object whose keys are the field names from the TypeScript definitions.`;
 
   const completion = await openai.chat.completions.create({
     model: "gpt-4.1",
