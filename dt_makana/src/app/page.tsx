@@ -12,6 +12,7 @@ import { FileUploader } from "@/components/file-uploader";
 import { classifySheet } from "@/services/classifySheet";
 import { describeColumns } from "@/services/describeColumns";
 import { mapFields } from "@/services/mapFields";
+import { getRelevantColumns } from "@/services/relevantColumns";
 import { type PersonnelEvent } from "@/types";
 
 interface SheetConfig extends HeaderConfig {
@@ -114,6 +115,18 @@ export default function Home() {
 
       const descriptions = await describeColumns({ headers, sampleRows });
       const mapping = await mapFields({ headers, descriptions, types: config.types });
+
+      // Determine column relevance based on the mapping and descriptions
+      try {
+        const relevance = await getRelevantColumns({
+          headers,
+          descriptions,
+          mapping,
+        });
+        console.log("Relevant columns result:", relevance);
+      } catch (err) {
+        console.error("relevant-columns error", err);
+      }
 
       const chunks = chunkArray(structured, 20);
       const events: PersonnelEvent[] = [];
