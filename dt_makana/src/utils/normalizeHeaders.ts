@@ -1,7 +1,7 @@
 /**
  * Converts a header string to snake_case alphanumeric
  */
-function slugify(header: string): string {
+export function slugify(header: string): string {
   return header
     .trim()
     .toLowerCase()

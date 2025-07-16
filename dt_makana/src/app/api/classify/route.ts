@@ -20,6 +20,13 @@ export async function POST(req: NextRequest) {
       mapping: Record<string, string>;
     } = await req.json();
 
+    // Log para ver las columnas y filas recibidas
+    console.log(
+      "Headers recibidos:",
+      rows && rows.length > 0 ? Object.keys(rows[0]) : []
+    );
+    console.log("Filas recibidas:", rows);
+
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
         { error: "Missing OPENAI_API_KEY" },

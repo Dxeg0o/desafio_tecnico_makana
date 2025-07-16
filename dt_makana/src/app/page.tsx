@@ -8,10 +8,12 @@ import { ResultsViewer } from "@/components/results-viewer";
 import { ProcessingViewer } from "@/components/processing-viewer";
 import { convertSheetData, type HeaderConfig } from "@/utils/convertSheetData";
 import { chunkArray } from "@/utils/chunkArray";
+import { filterRelevantColumns } from "@/utils/filterRelevantColumns";
 import { FileUploader } from "@/components/file-uploader";
 import { classifySheet } from "@/services/classifySheet";
 import { describeColumns } from "@/services/describeColumns";
 import { mapFields } from "@/services/mapFields";
+import { getRelevantColumns } from "@/services/relevantColumns";
 import { type PersonnelEvent } from "@/types";
 
 interface SheetConfig extends HeaderConfig {
@@ -113,9 +115,28 @@ export default function Home() {
           : rows.slice(0, 10).map((r) => r.slice(config.index + 1));
 
       const descriptions = await describeColumns({ headers, sampleRows });
-      const mapping = await mapFields({ headers, descriptions, types: config.types });
+      const mapping = await mapFields({
+        headers,
+        descriptions,
+        types: config.types,
+      });
 
-      const chunks = chunkArray(structured, 20);
+      // Determine column relevance based on the mapping and descriptions
+      let filtered = structured;
+      try {
+        const relevance = await getRelevantColumns({
+          headers,
+          descriptions,
+          mapping,
+        });
+        console.log("Relevant columns result:", relevance);
+        filtered = filterRelevantColumns(structured, relevance.relevant);
+        console.log("Filtered row sample:", filtered[0]);
+      } catch (err) {
+        console.error("relevant-columns error", err);
+      }
+
+      const chunks = chunkArray(filtered, 20);
       const events: PersonnelEvent[] = [];
       for (const chunk of chunks) {
         try {
@@ -196,13 +217,12 @@ export default function Home() {
             />
           )}
 
-          {currentStep === 4 && (
-            isProcessing || !processedData ? (
+          {currentStep === 4 &&
+            (isProcessing || !processedData ? (
               <ProcessingViewer progress={progress} />
             ) : (
               <ResultsViewer structured={processedData} onBack={resetFlow} />
-            )
-          )}
+            ))}
         </div>
       </div>
     </div>
