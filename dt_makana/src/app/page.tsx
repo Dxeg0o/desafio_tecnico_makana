@@ -18,6 +18,7 @@ import { validateChunk } from "@/services/validateChunk";
 import { type PersonnelEvent } from "@/types";
 import { formatDuration } from "@/utils/formatDuration";
 import Link from "next/link";
+import Image from "next/image";
 
 interface SheetConfig extends HeaderConfig {
   types: ("license" | "accident" | "failure")[];
@@ -206,6 +207,14 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="text-center mb-8">
+          <Image
+            src="/logo.png"
+            alt="Makana Logo"
+            width={1426}
+            height={848}
+            className="w-40 h-auto mx-auto mb-4"
+            priority
+          />
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             Procesador de Archivos
           </h1>
