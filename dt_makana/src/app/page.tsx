@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { StepIndicator } from "@/components/step-indicator";
 import { SheetSelector } from "@/components/sheet-selector";
 import { HeaderConfigurator } from "@/components/header-configurator";
@@ -16,6 +16,7 @@ import { mapFields } from "@/services/mapFields";
 import { getRelevantColumns } from "@/services/relevantColumns";
 import { validateChunk } from "@/services/validateChunk";
 import { type PersonnelEvent } from "@/types";
+import { formatDuration } from "@/utils/formatDuration";
 import Link from "next/link";
 
 interface SheetConfig extends HeaderConfig {
@@ -52,6 +53,16 @@ export default function Home() {
     useState<Record<string, PersonnelEvent[]>>();
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [progressStage, setProgressStage] = useState("Preparando datos...");
+  const [eta, setEta] = useState<string>();
+  const startRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (progress === 0) return;
+    const elapsed = Date.now() - startRef.current;
+    const remaining = (elapsed / progress) * (100 - progress);
+    setEta(formatDuration(remaining));
+  }, [progress]);
 
   const handleFileLoaded = (data: Record<string, string[][]>) => {
     setSheets(data);
@@ -89,6 +100,9 @@ export default function Home() {
     setProcessedData(undefined);
     setCurrentStep(4);
     setIsProcessing(true);
+    setProgressStage("Preparando datos...");
+    setProgress(0);
+    startRef.current = Date.now();
 
     const totalChunks = selectedSheets.reduce((sum, name) => {
       const rows = sheets[name];
@@ -116,7 +130,9 @@ export default function Home() {
           ? rows.slice(config.index + 1, config.index + 11)
           : rows.slice(0, 10).map((r) => r.slice(config.index + 1));
 
+      setProgressStage("Describiendo columnas...");
       const descriptions = await describeColumns({ headers, sampleRows });
+      setProgressStage("Mapeando campos...");
       const mapping = await mapFields({
         headers,
         descriptions,
@@ -126,6 +142,7 @@ export default function Home() {
       // Determine column relevance based on the mapping and descriptions
       let filtered = structured;
       try {
+        setProgressStage("Evaluando columnas...");
         const relevance = await getRelevantColumns({
           headers,
           descriptions,
@@ -142,6 +159,7 @@ export default function Home() {
       const events: PersonnelEvent[] = [];
       for (const chunk of chunks) {
         try {
+          setProgressStage("Validando datos...");
           const isValid = await validateChunk({ rows: chunk });
           if (!isValid) {
             console.warn("Chunk without sufficient data, stopping processing.");
@@ -152,6 +170,7 @@ export default function Home() {
             return;
           }
 
+          setProgressStage("Clasificando filas...");
           const classified = await classifySheet({
             rows: chunk,
             types: config.types,
@@ -172,6 +191,7 @@ export default function Home() {
     setProcessedData(results);
     setIsProcessing(false);
     setProgress(100);
+    setProgressStage("Proceso completado");
   };
 
   const resetFlow = () => {
@@ -236,7 +256,7 @@ export default function Home() {
 
           {currentStep === 4 &&
             (isProcessing || !processedData ? (
-              <ProcessingViewer progress={progress} />
+              <ProcessingViewer progress={progress} stage={progressStage} eta={eta} />
             ) : (
               <ResultsViewer structured={processedData} onBack={resetFlow} />
             ))}
