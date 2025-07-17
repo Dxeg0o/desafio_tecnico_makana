@@ -14,6 +14,7 @@ import { classifySheet } from "@/services/classifySheet";
 import { describeColumns } from "@/services/describeColumns";
 import { mapFields } from "@/services/mapFields";
 import { getRelevantColumns } from "@/services/relevantColumns";
+import { validateChunk } from "@/services/validateChunk";
 import { type PersonnelEvent } from "@/types";
 
 interface SheetConfig extends HeaderConfig {
@@ -140,6 +141,14 @@ export default function Home() {
       const events: PersonnelEvent[] = [];
       for (const chunk of chunks) {
         try {
+          const isValid = await validateChunk({ rows: chunk });
+          if (!isValid) {
+            console.warn("Chunk without sufficient data, stopping processing.");
+            setIsProcessing(false);
+            setProgress(100);
+            return;
+          }
+
           const classified = await classifySheet({
             rows: chunk,
             types: config.types,
