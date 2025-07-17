@@ -47,25 +47,27 @@ export const SheetSelector: React.FC<SheetSelectorProps> = ({
   const ROWS_PER_PAGE = 50
 
   const toggleExpanded = (sheetName: string) => {
-    const newExpanded = new Set(expandedSheets)
-    if (newExpanded.has(sheetName)) {
-      newExpanded.delete(sheetName)
-    } else {
-      newExpanded.add(sheetName)
-      if (!loadingSheets.has(sheetName)) {
-        setLoadingSheets((prev) => new Set(prev).add(sheetName))
-        setTimeout(
-          () =>
-            setLoadingSheets((prev) => {
-              const next = new Set(prev)
-              next.delete(sheetName)
-              return next
-            }),
-          300,
-        )
+    setExpandedSheets((prev) => {
+      const next = new Set(prev)
+      if (next.has(sheetName)) {
+        next.delete(sheetName)
+      } else {
+        next.add(sheetName)
+        if (!loadingSheets.has(sheetName)) {
+          setLoadingSheets((p) => new Set(p).add(sheetName))
+          setTimeout(
+            () =>
+              setLoadingSheets((p) => {
+                const n = new Set(p)
+                n.delete(sheetName)
+                return n
+              }),
+            300,
+          )
+        }
       }
-    }
-    setExpandedSheets(newExpanded)
+      return next
+    })
   }
 
   const changePage = (sheet: string, page: number) => {
@@ -74,43 +76,44 @@ export const SheetSelector: React.FC<SheetSelectorProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Selecciona las hojas a procesar</h2>
-        <p className="text-gray-600">Elige qué hojas quieres incluir y configura el tipo de datos que contienen</p>
+      <div className="text-center space-y-2">
+        <h2 className="text-2xl font-bold text-gray-900">Selecciona las hojas a procesar</h2>
+        <p className="text-gray-600">Elige qué hojas deseas incluir y define el tipo de datos</p>
       </div>
 
-      <div className="grid gap-4">
+      <div className="grid gap-4 grid-cols-1">
         {Object.entries(sheets).map(([name, rows]) => {
           const isSelected = selected.includes(name)
           const config = configs[name]
           const isExpanded = expandedSheets.has(name)
+          const page = pageBySheet[name] || 0
 
           return (
             <Card
               key={name}
               className={cn(
-                "transition-all duration-200",
-                isSelected ? "ring-2 ring-blue-500 bg-blue-50" : "hover:shadow-md",
+                "transition-all overflow-hidden",
+                isSelected && "ring-2 ring-blue-500 bg-blue-50",
               )}
             >
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
                     <Checkbox
                       checked={isSelected}
                       onCheckedChange={() => onToggleSheet(name)}
                       className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                     />
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2">
                       <FileText className="w-5 h-5 text-gray-600" />
                       <CardTitle className="text-lg">{name}</CardTitle>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="outline" className="text-xs">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs whitespace-nowrap">
                       {rows.length} filas × {rows[0]?.length || 0} columnas
                     </Badge>
-                    <Button variant="ghost" size="sm" onClick={() => toggleExpanded(name)} className="h-8 w-8 p-0">
+                    <Button variant="ghost" size="icon" onClick={() => toggleExpanded(name)} className="size-8">
                       {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </Button>
                   </div>
@@ -118,28 +121,24 @@ export const SheetSelector: React.FC<SheetSelectorProps> = ({
 
                 {isSelected && (
                   <div className="mt-4 space-y-3">
-                    <div>
-                      <label className="text-sm font-medium text-gray-700 mb-2 block">
-                        Tipos de datos en esta hoja:
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {sheetTypeOptions.map((option) => (
-                          <label key={option.value} className="flex items-center space-x-2 cursor-pointer">
-                            <Checkbox
-                              checked={config.types.includes(option.value)}
-                              onCheckedChange={() => {
-                                const current = config.types
-                                const updated = current.includes(option.value)
-                                  ? current.filter((t) => t !== option.value)
-                                  : [...current, option.value]
-                                onUpdateConfig(name, { types: updated })
-                              }}
-                              className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
-                            />
-                            <Badge className={option.color}>{option.label}</Badge>
-                          </label>
-                        ))}
-                      </div>
+                    <p className="text-sm font-medium text-gray-700">Tipos de datos:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {sheetTypeOptions.map((option) => (
+                        <label key={option.value} className="flex items-center gap-2 cursor-pointer text-sm">
+                          <Checkbox
+                            checked={config.types.includes(option.value)}
+                            onCheckedChange={() => {
+                              const current = config.types
+                              const updated = current.includes(option.value)
+                                ? current.filter((t) => t !== option.value)
+                                : [...current, option.value]
+                              onUpdateConfig(name, { types: updated })
+                            }}
+                            className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                          />
+                          <Badge className={option.color}>{option.label}</Badge>
+                        </label>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -147,100 +146,90 @@ export const SheetSelector: React.FC<SheetSelectorProps> = ({
 
               <Collapsible open={isExpanded} onOpenChange={() => toggleExpanded(name)}>
                 <CollapsibleContent>
-                  <CardContent className="pt-0">
-                    <div className="space-y-2">
-                      <div className="border rounded-lg overflow-hidden max-h-80">
-                        <div className="overflow-auto max-h-full">
-                          <table className="w-full text-xs border-collapse">
-                            <thead className="sticky top-0 bg-gray-100 z-10">
-                              <tr>
-                                <th className="px-2 py-2 text-left border-r border-gray-300 font-medium text-gray-700 min-w-12 bg-gray-200">
-                                  #
+                  <CardContent className="p-0">
+                    <div className="border-t">
+                      <div className="overflow-auto max-h-80">
+                        <table className="w-full text-xs border-collapse min-w-[600px]">
+                          <thead className="sticky top-0 bg-gray-100 z-10">
+                            <tr>
+                              <th className="px-2 py-2 text-left border-r border-gray-300 font-medium bg-gray-200">#</th>
+                              {rows[0]?.map((_, colIndex) => (
+                                <th
+                                  key={colIndex}
+                                  className="px-2 py-2 text-left border-r border-gray-300 font-medium bg-gray-100 min-w-24"
+                                >
+                                  Col {colIndex + 1}
                                 </th>
-                                {rows[0]?.map((_, colIndex) => (
-                                  <th
-                                    key={colIndex}
-                                    className="px-2 py-2 text-left border-r border-gray-300 font-medium min-w-24 bg-gray-100 text-gray-700"
-                                  >
-                                    Col {colIndex + 1}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            {loadingSheets.has(name) ? (
-                              <tbody>
-                                {Array.from({ length: 5 }).map((_, idx) => (
-                                  <tr key={idx} className="animate-pulse">
-                                    <td className="px-2 py-1 border-r border-gray-200 bg-gray-100">
+                              ))}
+                            </tr>
+                          </thead>
+                          {loadingSheets.has(name) ? (
+                            <tbody>
+                              {Array.from({ length: 5 }).map((_, idx) => (
+                                <tr key={idx} className="animate-pulse">
+                                  <td className="px-2 py-1 border-r border-gray-200 bg-gray-100">
+                                    <div className="h-3 bg-gray-300 rounded" />
+                                  </td>
+                                  {rows[0]?.map((_, colIndex) => (
+                                    <td key={colIndex} className="px-2 py-1 border-r border-gray-200">
                                       <div className="h-3 bg-gray-300 rounded" />
                                     </td>
-                                    {rows[0]?.map((_, colIndex) => (
-                                      <td key={colIndex} className="px-2 py-1 border-r border-gray-200">
-                                        <div className="h-3 bg-gray-300 rounded" />
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          ) : (
+                            <tbody>
+                              {rows
+                                .slice(page * ROWS_PER_PAGE, page * ROWS_PER_PAGE + ROWS_PER_PAGE)
+                                .map((row, rowIndex) => {
+                                  const absoluteIndex = page * ROWS_PER_PAGE + rowIndex
+                                  return (
+                                    <tr key={absoluteIndex} className={absoluteIndex % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                                      <td className="px-2 py-1 border-r border-gray-300 text-center font-medium text-gray-500 bg-gray-50 sticky left-0 z-5">
+                                        {absoluteIndex + 1}
                                       </td>
-                                    ))}
-                                  </tr>
-                                ))}
-                              </tbody>
-                            ) : (
-                              <tbody>
-                                {rows
-                                  .slice(
-                                    (pageBySheet[name] || 0) * ROWS_PER_PAGE,
-                                    (pageBySheet[name] || 0) * ROWS_PER_PAGE + ROWS_PER_PAGE,
-                                  )
-                                  .map((row, rowIndex) => {
-                                    const absoluteIndex = (pageBySheet[name] || 0) * ROWS_PER_PAGE + rowIndex
-                                    return (
-                                      <tr key={absoluteIndex} className={absoluteIndex % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                                        <td className="px-2 py-1 border-r border-gray-300 text-center font-medium text-gray-500 bg-gray-50 sticky left-0 z-5">
-                                          {absoluteIndex + 1}
+                                      {row.map((cell, colIndex) => (
+                                        <td
+                                          key={colIndex}
+                                          className="px-2 py-1 border-r border-gray-200 min-w-24 max-w-32 truncate"
+                                          title={String(cell)}
+                                        >
+                                          {String(cell)}
                                         </td>
-                                        {row.map((cell, colIndex) => (
-                                          <td
-                                            key={colIndex}
-                                            className="px-2 py-1 border-r border-gray-200 min-w-24 max-w-32 truncate"
-                                            title={String(cell)}
-                                          >
-                                            {String(cell)}
-                                          </td>
-                                        ))}
-                                      </tr>
-                                    )
-                                  })}
-                              </tbody>
-                            )}
-                          </table>
-                        </div>
-                        {Math.ceil(rows.length / ROWS_PER_PAGE) > 1 && !loadingSheets.has(name) && (
-                          <div className="flex items-center justify-between p-2 text-xs bg-gray-50 border-t">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => changePage(name, Math.max(0, (pageBySheet[name] || 0) - 1))}
-                              disabled={(pageBySheet[name] || 0) === 0}
-                            >
-                              Anterior
-                            </Button>
-                            <span>
-                              {(pageBySheet[name] || 0) + 1} / {Math.ceil(rows.length / ROWS_PER_PAGE)}
-                            </span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                changePage(
-                                  name,
-                                  Math.min(Math.ceil(rows.length / ROWS_PER_PAGE) - 1, (pageBySheet[name] || 0) + 1),
-                                )
-                              }
-                              disabled={(pageBySheet[name] || 0) >= Math.ceil(rows.length / ROWS_PER_PAGE) - 1}
-                            >
-                              Siguiente
-                            </Button>
-                          </div>
-                        )}
+                                      ))}
+                                    </tr>
+                                  )
+                                })}
+                            </tbody>
+                          )}
+                        </table>
                       </div>
+                      {Math.ceil(rows.length / ROWS_PER_PAGE) > 1 && !loadingSheets.has(name) && (
+                        <div className="flex items-center justify-between p-2 text-xs bg-gray-50 border-t">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => changePage(name, Math.max(0, page - 1))}
+                            disabled={page === 0}
+                          >
+                            Anterior
+                          </Button>
+                          <span>
+                            {page + 1} / {Math.ceil(rows.length / ROWS_PER_PAGE)}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              changePage(name, Math.min(Math.ceil(rows.length / ROWS_PER_PAGE) - 1, page + 1))
+                            }
+                            disabled={page >= Math.ceil(rows.length / ROWS_PER_PAGE) - 1}
+                          >
+                            Siguiente
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </CollapsibleContent>
@@ -261,3 +250,4 @@ export const SheetSelector: React.FC<SheetSelectorProps> = ({
     </div>
   )
 }
+
