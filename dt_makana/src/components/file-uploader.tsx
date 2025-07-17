@@ -30,7 +30,6 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileLoaded }) => {
 
       try {
         const sheets = await readFileSheets(file);
-        setSuccess(`Archivo "${file.name}" cargado exitosamente`);
         onFileLoaded?.(sheets);
       } catch (error) {
         console.error("FileUploader: error parsing file:", error);
@@ -38,7 +37,6 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileLoaded }) => {
           "Ocurrió un error al procesar el archivo. Verifica que sea un archivo válido."
         );
       } finally {
-        setIsLoading(false);
       }
     },
     [onFileLoaded]

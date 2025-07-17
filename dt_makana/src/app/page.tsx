@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { StepIndicator } from "@/components/step-indicator";
 import { SheetSelector } from "@/components/sheet-selector";
 import { HeaderConfigurator } from "@/components/header-configurator";
@@ -235,40 +236,79 @@ export default function Home() {
           onStepChange={(step) => step < currentStep && setCurrentStep(step)}
         />
 
-        <div className="bg-white rounded-xl shadow-lg p-8 relative">
-          {currentStep === 1 && (
-            <FileUploader onFileLoaded={handleFileLoaded} />
-          )}
+        <div className="bg-white rounded-xl shadow-lg p-8 relative overflow-hidden">
+          <AnimatePresence mode="wait" initial={false}>
+            {currentStep === 1 && (
+              <motion.div
+                key="step-1"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+                className="w-full"
+              >
+                <FileUploader onFileLoaded={handleFileLoaded} />
+              </motion.div>
+            )}
 
-          {currentStep === 2 && sheets && (
-            <SheetSelector
-              sheets={sheets}
-              selected={selectedSheets}
-              configs={sheetConfigs}
-              onToggleSheet={toggleSheetSelection}
-              onUpdateConfig={updateSheetConfig}
-              onNext={() => setCurrentStep(3)}
-              onBack={() => setCurrentStep(1)}
-            />
-          )}
+            {currentStep === 2 && sheets && (
+              <motion.div
+                key="step-2"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+                className="w-full"
+              >
+                <SheetSelector
+                  sheets={sheets}
+                  selected={selectedSheets}
+                  configs={sheetConfigs}
+                  onToggleSheet={toggleSheetSelection}
+                  onUpdateConfig={updateSheetConfig}
+                  onNext={() => setCurrentStep(3)}
+                  onBack={() => setCurrentStep(1)}
+                />
+              </motion.div>
+            )}
 
-          {currentStep === 3 && sheets && (
-            <HeaderConfigurator
-              sheets={sheets}
-              selected={selectedSheets}
-              configs={sheetConfigs}
-              onUpdateConfig={updateSheetConfig}
-              onNext={processData}
-              onBack={() => setCurrentStep(2)}
-            />
-          )}
+            {currentStep === 3 && sheets && (
+              <motion.div
+                key="step-3"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+                className="w-full"
+              >
+                <HeaderConfigurator
+                  sheets={sheets}
+                  selected={selectedSheets}
+                  configs={sheetConfigs}
+                  onUpdateConfig={updateSheetConfig}
+                  onNext={processData}
+                  onBack={() => setCurrentStep(2)}
+                />
+              </motion.div>
+            )}
 
-          {currentStep === 4 &&
-            (isProcessing || !processedData ? (
-              <ProcessingViewer progress={progress} stage={progressStage} eta={eta} />
-            ) : (
-              <ResultsViewer structured={processedData} onBack={resetFlow} />
-            ))}
+            {currentStep === 4 && (
+              <motion.div
+                key="step-4"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+                className="w-full"
+              >
+                {isProcessing || !processedData ? (
+                  <ProcessingViewer progress={progress} stage={progressStage} eta={eta} />
+                ) : (
+                  <ResultsViewer structured={processedData} onBack={resetFlow} />
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>
