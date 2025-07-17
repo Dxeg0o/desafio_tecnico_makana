@@ -144,6 +144,8 @@ export default function Home() {
           const isValid = await validateChunk({ rows: chunk });
           if (!isValid) {
             console.warn("Chunk without sufficient data, stopping processing.");
+            results[name] = events;
+            setProcessedData(results);
             setIsProcessing(false);
             setProgress(100);
             return;
