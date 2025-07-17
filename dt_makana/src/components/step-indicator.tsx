@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { motion } from "framer-motion";
 import { Check, FileUp, Settings, Database, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -33,26 +34,33 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
           return (
             <React.Fragment key={index}>
               <div className="flex flex-col items-center">
-                <button
+                <motion.button
+                  whileHover={isClickable ? { scale: 1.08 } : {}}
+                  whileTap={isClickable ? { scale: 0.95 } : {}}
                   onClick={() => isClickable && onStepChange(stepNumber)}
                   disabled={!isClickable}
                   className={cn(
-                    "relative flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-200",
+                    "relative flex items-center justify-center w-12 h-12 rounded-full border-2 transition-colors duration-200",
                     isCompleted && "bg-green-500 border-green-500 text-white",
                     isCurrent && "bg-blue-500 border-blue-500 text-white",
                     !isCompleted &&
                       !isCurrent &&
                       "bg-gray-100 border-gray-300 text-gray-400",
-                    isClickable && "hover:scale-105 cursor-pointer",
+                    isClickable && "cursor-pointer",
                     !isClickable && "cursor-not-allowed"
                   )}
                 >
                   {isCompleted ? (
-                    <Check className="w-6 h-6" />
+                    <motion.span
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                    >
+                      <Check className="w-6 h-6" />
+                    </motion.span>
                   ) : (
                     <Icon className="w-6 h-6" />
                   )}
-                </button>
+                </motion.button>
                 <div className="mt-2 text-center">
                   <p
                     className={cn(
@@ -64,18 +72,21 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                   >
                     {step.title}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1 max-w-24">
+                  <p className="text-xs text-gray-500 mt-1 max-w-[8rem] mx-auto text-center">
                     {step.description}
                   </p>
                 </div>
               </div>
               {index < steps.length - 1 && (
-                <div
-                  className={cn(
-                    "flex-1 h-0.5 mx-4 transition-colors duration-200",
-                    stepNumber < currentStep ? "bg-green-500" : "bg-gray-300"
-                  )}
-                />
+                <div className="flex-1 h-0.5 mx-4 relative bg-gray-300">
+                  <motion.div
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: stepNumber < currentStep ? 1 : 0 }}
+                    transition={{ duration: 0.3 }}
+                    style={{ transformOrigin: "left" }}
+                    className="absolute inset-0 bg-green-500"
+                  />
+                </div>
               )}
             </React.Fragment>
           );
