@@ -39,6 +39,10 @@ For each date-type column that signals an event type, you must:
 
 When age or gender are missing, infer them only from clear clues like a birthdate or a distinctly gendered name.
 
+Whenever a column may contain data in different formats, clearly specify the
+expected format to use. All dates must be formatted as MM/DD/AA. The
+collaborator_seniority field should always be expressed as "XX years, XX months".
+
 Respond only with a JSON object whose keys are the field names from the TypeScript definitions, and whose values are concise instructions for how to map the dataset columns to each field, following the above rules.
 */
 
