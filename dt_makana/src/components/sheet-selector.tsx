@@ -41,6 +41,10 @@ export const SheetSelector: React.FC<SheetSelectorProps> = ({
   onBack,
 }) => {
   const [expandedSheets, setExpandedSheets] = React.useState<Set<string>>(new Set())
+  const [loadingSheets, setLoadingSheets] = React.useState<Set<string>>(new Set())
+  const [pageBySheet, setPageBySheet] = React.useState<Record<string, number>>({})
+
+  const ROWS_PER_PAGE = 50
 
   const toggleExpanded = (sheetName: string) => {
     const newExpanded = new Set(expandedSheets)
@@ -48,8 +52,24 @@ export const SheetSelector: React.FC<SheetSelectorProps> = ({
       newExpanded.delete(sheetName)
     } else {
       newExpanded.add(sheetName)
+      if (!loadingSheets.has(sheetName)) {
+        setLoadingSheets((prev) => new Set(prev).add(sheetName))
+        setTimeout(
+          () =>
+            setLoadingSheets((prev) => {
+              const next = new Set(prev)
+              next.delete(sheetName)
+              return next
+            }),
+          300,
+        )
+      }
     }
     setExpandedSheets(newExpanded)
+  }
+
+  const changePage = (sheet: string, page: number) => {
+    setPageBySheet((prev) => ({ ...prev, [sheet]: page }))
   }
 
   return (
@@ -147,26 +167,79 @@ export const SheetSelector: React.FC<SheetSelectorProps> = ({
                                 ))}
                               </tr>
                             </thead>
-                            <tbody>
-                              {rows.map((row, rowIndex) => (
-                                <tr key={rowIndex} className={rowIndex % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                                  <td className="px-2 py-1 border-r border-gray-300 text-center font-medium text-gray-500 bg-gray-50 sticky left-0 z-5">
-                                    {rowIndex + 1}
-                                  </td>
-                                  {row.map((cell, colIndex) => (
-                                    <td
-                                      key={colIndex}
-                                      className="px-2 py-1 border-r border-gray-200 min-w-24 max-w-32 truncate"
-                                      title={String(cell)}
-                                    >
-                                      {String(cell)}
+                            {loadingSheets.has(name) ? (
+                              <tbody>
+                                {Array.from({ length: 5 }).map((_, idx) => (
+                                  <tr key={idx} className="animate-pulse">
+                                    <td className="px-2 py-1 border-r border-gray-200 bg-gray-100">
+                                      <div className="h-3 bg-gray-300 rounded" />
                                     </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
+                                    {rows[0]?.map((_, colIndex) => (
+                                      <td key={colIndex} className="px-2 py-1 border-r border-gray-200">
+                                        <div className="h-3 bg-gray-300 rounded" />
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            ) : (
+                              <tbody>
+                                {rows
+                                  .slice(
+                                    (pageBySheet[name] || 0) * ROWS_PER_PAGE,
+                                    (pageBySheet[name] || 0) * ROWS_PER_PAGE + ROWS_PER_PAGE,
+                                  )
+                                  .map((row, rowIndex) => {
+                                    const absoluteIndex = (pageBySheet[name] || 0) * ROWS_PER_PAGE + rowIndex
+                                    return (
+                                      <tr key={absoluteIndex} className={absoluteIndex % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                                        <td className="px-2 py-1 border-r border-gray-300 text-center font-medium text-gray-500 bg-gray-50 sticky left-0 z-5">
+                                          {absoluteIndex + 1}
+                                        </td>
+                                        {row.map((cell, colIndex) => (
+                                          <td
+                                            key={colIndex}
+                                            className="px-2 py-1 border-r border-gray-200 min-w-24 max-w-32 truncate"
+                                            title={String(cell)}
+                                          >
+                                            {String(cell)}
+                                          </td>
+                                        ))}
+                                      </tr>
+                                    )
+                                  })}
+                              </tbody>
+                            )}
                           </table>
                         </div>
+                        {Math.ceil(rows.length / ROWS_PER_PAGE) > 1 && !loadingSheets.has(name) && (
+                          <div className="flex items-center justify-between p-2 text-xs bg-gray-50 border-t">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => changePage(name, Math.max(0, (pageBySheet[name] || 0) - 1))}
+                              disabled={(pageBySheet[name] || 0) === 0}
+                            >
+                              Anterior
+                            </Button>
+                            <span>
+                              {(pageBySheet[name] || 0) + 1} / {Math.ceil(rows.length / ROWS_PER_PAGE)}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                changePage(
+                                  name,
+                                  Math.min(Math.ceil(rows.length / ROWS_PER_PAGE) - 1, (pageBySheet[name] || 0) + 1),
+                                )
+                              }
+                              disabled={(pageBySheet[name] || 0) >= Math.ceil(rows.length / ROWS_PER_PAGE) - 1}
+                            >
+                              Siguiente
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </CardContent>

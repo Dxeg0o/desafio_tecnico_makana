@@ -36,6 +36,10 @@ export const HeaderConfigurator: React.FC<HeaderConfiguratorProps> = ({
   onNext,
   onBack,
 }) => {
+  const [pageBySheet, setPageBySheet] = React.useState<Record<string, number>>({})
+  const [loadingSheets, setLoadingSheets] = React.useState<Set<string>>(new Set())
+  const ROWS_PER_PAGE = 50
+
   const getPreviewHeaders = (sheetName: string) => {
     const rows = sheets[sheetName]
     const config = configs[sheetName]
@@ -46,6 +50,17 @@ export const HeaderConfigurator: React.FC<HeaderConfiguratorProps> = ({
       return rows.map((row) => row[config.index] || "")
     }
   }
+
+  const changePage = (sheet: string, page: number) => {
+    setPageBySheet((prev) => ({ ...prev, [sheet]: page }))
+  }
+
+  React.useEffect(() => {
+    const load = new Set(selected)
+    setLoadingSheets(load)
+    const id = setTimeout(() => setLoadingSheets(new Set()), 300)
+    return () => clearTimeout(id)
+  }, [selected])
 
   return (
     <div className="space-y-6">
@@ -179,47 +194,100 @@ export const HeaderConfigurator: React.FC<HeaderConfiguratorProps> = ({
                               ))}
                             </tr>
                           </thead>
-                          <tbody>
-                            {rows.map((row, rowIndex) => (
-                              <tr
-                                key={rowIndex}
-                                className={cn(
-                                  "transition-colors duration-150 hover:bg-gray-100",
-                                  config.orientation === "row" && config.index === rowIndex
-                                    ? "bg-blue-100 border-l-4 border-blue-500"
-                                    : rowIndex % 2 === 0
-                                      ? "bg-white"
-                                      : "bg-gray-50",
-                                )}
-                              >
-                                <td className="px-2 py-1 border-r border-gray-300 text-center font-medium text-gray-500 bg-gray-50 sticky left-0 z-5">
-                                  {rowIndex + 1}
-                                </td>
-                                {row.map((cell, colIndex) => (
-                                  <td
-                                    key={colIndex}
-                                    className={cn(
-                                      "px-2 py-1 border-r border-gray-200 min-w-24 max-w-32 truncate transition-colors duration-150 cursor-pointer",
-                                      config.orientation === "column" && config.index === colIndex ? "bg-blue-100" : "",
-                                    )}
-                                    title={String(cell)}
-                                    onClick={() => {
-                                      if (config.orientation === "column") {
-                                        onUpdateConfig(sheetName, { index: colIndex })
-                                      } else {
-                                        onUpdateConfig(sheetName, { index: rowIndex })
-                                      }
-                                    }}
-                                  >
-                                    {String(cell)}
-                                  </td>
+                            {loadingSheets.has(sheetName) ? (
+                              <tbody>
+                                {Array.from({ length: 5 }).map((_, idx) => (
+                                  <tr key={idx} className="animate-pulse">
+                                    <td className="px-2 py-1 border-r border-gray-200 bg-gray-100">
+                                      <div className="h-3 bg-gray-300 rounded" />
+                                    </td>
+                                    {rows[0]?.map((_, colIndex) => (
+                                      <td key={colIndex} className="px-2 py-1 border-r border-gray-200">
+                                        <div className="h-3 bg-gray-300 rounded" />
+                                      </td>
+                                    ))}
+                                  </tr>
                                 ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                              </tbody>
+                            ) : (
+                              <tbody>
+                                {rows
+                                  .slice(
+                                    (pageBySheet[sheetName] || 0) * ROWS_PER_PAGE,
+                                    (pageBySheet[sheetName] || 0) * ROWS_PER_PAGE + ROWS_PER_PAGE,
+                                  )
+                                  .map((row, rowIndex) => {
+                                    const absoluteIndex = (pageBySheet[sheetName] || 0) * ROWS_PER_PAGE + rowIndex
+                                    return (
+                                      <tr
+                                        key={absoluteIndex}
+                                        className={cn(
+                                          "transition-colors duration-150 hover:bg-gray-100",
+                                          config.orientation === "row" && config.index === absoluteIndex
+                                            ? "bg-blue-100 border-l-4 border-blue-500"
+                                            : absoluteIndex % 2 === 0
+                                              ? "bg-white"
+                                              : "bg-gray-50",
+                                        )}
+                                      >
+                                        <td className="px-2 py-1 border-r border-gray-300 text-center font-medium text-gray-500 bg-gray-50 sticky left-0 z-5">
+                                          {absoluteIndex + 1}
+                                        </td>
+                                        {row.map((cell, colIndex) => (
+                                          <td
+                                            key={colIndex}
+                                            className={cn(
+                                              "px-2 py-1 border-r border-gray-200 min-w-24 max-w-32 truncate transition-colors duration-150 cursor-pointer",
+                                              config.orientation === "column" && config.index === colIndex ? "bg-blue-100" : "",
+                                            )}
+                                            title={String(cell)}
+                                            onClick={() => {
+                                              if (config.orientation === "column") {
+                                                onUpdateConfig(sheetName, { index: colIndex })
+                                              } else {
+                                                onUpdateConfig(sheetName, { index: absoluteIndex })
+                                              }
+                                            }}
+                                          >
+                                            {String(cell)}
+                                          </td>
+                                        ))}
+                                      </tr>
+                                    )
+                                  })}
+                                </tbody>
+                              )}
+                          </table>
+                        </div>
+                        {Math.ceil(rows.length / ROWS_PER_PAGE) > 1 && !loadingSheets.has(sheetName) && (
+                          <div className="flex items-center justify-between p-2 text-xs bg-gray-50 border-t">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => changePage(sheetName, Math.max(0, (pageBySheet[sheetName] || 0) - 1))}
+                              disabled={(pageBySheet[sheetName] || 0) === 0}
+                            >
+                              Anterior
+                            </Button>
+                            <span>
+                              {(pageBySheet[sheetName] || 0) + 1} / {Math.ceil(rows.length / ROWS_PER_PAGE)}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                changePage(
+                                  sheetName,
+                                  Math.min(Math.ceil(rows.length / ROWS_PER_PAGE) - 1, (pageBySheet[sheetName] || 0) + 1),
+                                )
+                              }
+                              disabled={(pageBySheet[sheetName] || 0) >= Math.ceil(rows.length / ROWS_PER_PAGE) - 1}
+                            >
+                              Siguiente
+                            </Button>
+                          </div>
+                        )}
                       </div>
-                    </div>
                   </div>
                 </div>
               </CardContent>
