@@ -20,6 +20,7 @@ import { type PersonnelEvent } from "@/types";
 import { formatDuration } from "@/utils/formatDuration";
 import Link from "next/link";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 interface SheetConfig extends HeaderConfig {
   types: ("license" | "accident" | "failure")[];
@@ -205,7 +206,12 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative">
+      <div className="absolute top-4 right-4">
+        <Button asChild variant="outline">
+          <Link href="/diagrama-flujo">Diagrama de flujo</Link>
+        </Button>
+      </div>
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="text-center mb-8">
           <Image
@@ -223,11 +229,6 @@ export default function Home() {
             Convierte y estructura tus datos de Excel y CSV de manera
             inteligente
           </p>
-          <div className="mt-4">
-            <Link href="/informe-tecnico" className="text-blue-600 underline">
-              Ver informe técnico
-            </Link>
-          </div>
         </div>
 
         <StepIndicator
