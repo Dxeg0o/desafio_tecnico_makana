@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function DiagramaFlujo() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative">
+    <div className="min-h-screen bg-gradient-to-br from-[#ffebd179] to-[#2b5de729] relative">
       <div className="absolute top-4 left-4">
         <Button asChild variant="outline">
           <Link href="/">Volver</Link>
