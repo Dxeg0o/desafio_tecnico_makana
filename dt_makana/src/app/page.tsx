@@ -16,6 +16,7 @@ import { mapFields } from "@/services/mapFields";
 import { getRelevantColumns } from "@/services/relevantColumns";
 import { validateChunk } from "@/services/validateChunk";
 import { type PersonnelEvent } from "@/types";
+import Link from "next/link";
 
 interface SheetConfig extends HeaderConfig {
   types: ("license" | "accident" | "failure")[];
@@ -192,6 +193,11 @@ export default function Home() {
             Convierte y estructura tus datos de Excel y CSV de manera
             inteligente
           </p>
+          <div className="mt-4">
+            <Link href="/informe-tecnico" className="text-blue-600 underline">
+              Ver informe técnico
+            </Link>
+          </div>
         </div>
 
         <StepIndicator
